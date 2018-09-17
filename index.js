@@ -16,7 +16,7 @@ var fs = require('fs')
 var baseTemplate = fs.readFileSync(resolveApp('public/index.html')).toString()
 var {
     routes,
-    reducers
+    configureStore
 } = require('./dist/server.bundle')
 
 var matchRoute = function(e) {
@@ -48,7 +48,12 @@ module.exports = async function (ctx, next) {
             ctx.redirect(redirect.pathname + redirect.search)
         } else if (renderProps) {
             ctx.status = 200
-            var store = createStore(reducers)
+            var store = configureStore({
+                'test/articles': {
+                  fetching: false,
+                  articles: [1,2,3]
+                }
+            })
             var html = ReactDOMServer.renderToString(
                 React.createElement(Provider, {
                     store
