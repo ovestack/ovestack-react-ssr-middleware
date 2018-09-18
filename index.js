@@ -50,7 +50,7 @@ module.exports = async function (ctx, next) {
             let prefetchTasks = []
             for (let component of renderProps.components) {
                 if (component && component.WrappedComponent && component.WrappedComponent.fetchData) {
-                    const _tasks = component.WrappedComponent.fetchData(store.getState(), store.dispatch)
+                    const _tasks = component.WrappedComponent.fetchData(renderProps, store)
                     if (Array.isArray(_tasks)) {
                         prefetchTasks = prefetchTasks.concat(_tasks)
                     } else if (_tasks.then) {
