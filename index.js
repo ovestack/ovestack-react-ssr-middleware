@@ -1,9 +1,6 @@
 var React = require('react')
 var ReactDOMServer = require('react-dom/server')
 var {
-    createStore
-} = require('redux')
-var {
     Provider
 } = require('react-redux')
 var {
@@ -19,7 +16,7 @@ var {
     configureStore
 } = require('./dist/server.bundle')
 
-var matchRoute = function(e) {
+var matchRoute = function (e) {
     return new Promise((resolve, reject) => {
         match(e, (error, redirect, renderProps) => {
             if (error) {
@@ -29,7 +26,7 @@ var matchRoute = function(e) {
                     redirect,
                     renderProps
                 })
-            }     
+            }
         })
     })
 }
@@ -48,19 +45,26 @@ module.exports = async function (ctx, next) {
             ctx.redirect(redirect.pathname + redirect.search)
         } else if (renderProps) {
             ctx.status = 200
-            var store = configureStore({
-                'test/articles': {
-                  fetching: false,
-                  articles: [1,2,3]
+            // https://cloud.tencent.com/developer/article/1032428
+            let store = configureStore()
+            let prefetchTasks = []
+            for (let component of renderProps.components) {
+                if (component && component.WrappedComponent && component.WrappedComponent.fetchData) {
+                    const _tasks = component.WrappedComponent.fetchData(store.getState(), store.dispatch)
+                    if (Array.isArray(_tasks)) {
+                        prefetchTasks = prefetchTasks.concat(_tasks)
+                    } else if (_tasks.then) {
+                        prefetchTasks.push(_tasks)
+                    }
                 }
-            })
-            var html = ReactDOMServer.renderToString(
+            }
+            await Promise.all(prefetchTasks)
+            let html = ReactDOMServer.renderToString(
                 React.createElement(Provider, {
                     store
-                }, React.createElement(RouterContext,renderProps))
+                }, React.createElement(RouterContext, renderProps))
             )
-            var initState = store.getState()
-            ctx.body = baseTemplate.replace('{html}', html).replace('{__INITIAL_STATE__}', JSON.stringify(initState, null, 4))
+            ctx.body = baseTemplate.replace('{html}', html).replace('{__INITIAL_STATE__}', JSON.stringify(store.getState(), null, 4))
         } else {
             await next()
         }
